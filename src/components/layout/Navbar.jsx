@@ -20,7 +20,7 @@ const desktopLinks = [
   { label: "Shop", to: "/shop" },
   { label: "About", to: "/about" },
   { label: "Contact", to: "/contact" },
-  { label: "Blog", to: "/blog" },
+  // { label: "Blog", to: "/blog" },
 ];
 
 const mobileLinks = [
@@ -146,6 +146,14 @@ export default function Navbar() {
               <CounterBadge count={favorites.length} />
             </Link>
             <Link
+              to="/wishlist"
+              aria-label="Wishlist"
+              className="relative cursor-pointer transition hover:text-[#F97316]"
+            >
+              <Heart size={20} strokeWidth={2.2} />
+              <CounterBadge count={favorites.length} />
+            </Link>
+            <Link
               to="/cart"
               aria-label="Cart"
               className="relative transition hover:text-[#F97316]"
@@ -156,14 +164,21 @@ export default function Navbar() {
           </div>
 
           <div className="hidden items-center gap-6 text-[#111827] md:flex">
-            <button
+           
+
+            <Link
+              to="/shop"
+              aria-label="Wishlist"
+              className="relative transition hover:text-[#F97316]"
+            >
+              <button
               type="button"
               aria-label="Search"
               className="cursor-pointer transition hover:text-[#F97316]"
             >
               <Search size={22} strokeWidth={2.2} />
             </button>
-
+            </Link>
             <Link
               to="/wishlist"
               aria-label="Wishlist"

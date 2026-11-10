@@ -1,5 +1,6 @@
 import toast from "react-hot-toast";
 import { motion, useReducedMotion } from "framer-motion";
+import ButtonLoading from "../../components/ui/ButtonLoading";
 import checkoutService from "../../services/checkoutService";
 import productService from "../../services/productService";
 import {
@@ -11,7 +12,7 @@ import { removeOrderedItems } from "../../stores/shoppingStore";
 import useShopping from "../../hooks/useShopping";
 import PaymentQrModal from "./components/PaymentQrModal";
 
-import { ArrowRight, Check, LockKeyhole, ShieldCheck } from "lucide-react";
+import { ArrowRight, Check, ShieldCheck } from "lucide-react";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
@@ -385,13 +386,21 @@ function CheckoutSummary({
         type="submit"
         form="checkout-form"
         disabled={disabled || submitting}
+        aria-busy={submitting}
         className="mt-5 flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#E96400] px-5 text-sm font-semibold text-white transition hover:bg-[#C95500]"
       >
-        <LockKeyhole size={16} />
+        {/* <LockKeyhole size={16} /> */}
 
-        {submitting ? "Placing order..." : "Place Order"}
-
-        <ArrowRight size={16} />
+        {submitting ? (
+          <ButtonLoading>
+            {isCashOnDelivery ? "Place Order" : "Checkout"}
+          </ButtonLoading>
+        ) : (
+          <>
+            {isCashOnDelivery ? "Place Order" : "Checkout"}
+            <ArrowRight size={16} />
+          </>
+        )}
       </button>
 
       {/* Bottom information */}
@@ -415,19 +424,46 @@ function PaymentSuccessPopup() {
   const reducedMotion = useReducedMotion();
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/45 px-4 backdrop-blur-[2px]">
-      <div role="dialog" aria-modal="true" aria-labelledby="payment-success-title"
-        className="w-full max-w-sm rounded-3xl bg-white p-8 text-center shadow-[0_30px_100px_rgba(15,23,42,0.25)]">
-        <motion.div initial={reducedMotion ? false : { opacity: 0, scale: 0.85 }}
-          animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.3, ease: "easeOut" }}
-          className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#ECFDF3]">
-          <svg viewBox="0 0 24 24" className="h-12 w-12 text-[#12A467]" fill="none" aria-hidden="true">
-            <motion.path d="M5 12l4 4L19 6" stroke="currentColor" strokeWidth="3"
-              strokeLinecap="round" strokeLinejoin="round"
-              initial={reducedMotion ? false : { pathLength: 0 }} animate={{ pathLength: 1 }}
-              transition={{ duration: reducedMotion ? 0 : 0.45, delay: reducedMotion ? 0 : 0.15 }} />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="payment-success-title"
+        className="w-full max-w-sm rounded-3xl bg-white p-8 text-center shadow-[0_30px_100px_rgba(15,23,42,0.25)]"
+      >
+        <motion.div
+          initial={reducedMotion ? false : { opacity: 0, scale: 0.85 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
+          className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#ECFDF3]"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            className="h-12 w-12 text-[#12A467]"
+            fill="none"
+            aria-hidden="true"
+          >
+            <motion.path
+              d="M5 12l4 4L19 6"
+              stroke="currentColor"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              initial={reducedMotion ? false : { pathLength: 0 }}
+              animate={{ pathLength: 1 }}
+              transition={{
+                duration: reducedMotion ? 0 : 0.45,
+                delay: reducedMotion ? 0 : 0.15,
+              }}
+            />
           </svg>
         </motion.div>
-        <h2 id="payment-success-title" role="status" className="mt-5 text-xl font-semibold text-[#07182E]">Payment Successful</h2>
+        <h2
+          id="payment-success-title"
+          role="status"
+          className="mt-5 text-xl font-semibold text-[#07182E]"
+        >
+          Payment Successful
+        </h2>
       </div>
     </div>
   );
@@ -505,7 +541,7 @@ export default function Checkout() {
   const [attempt, setAttempt] = useState(0);
 
   // Store selected payment method.
-  const [selectedPaymentType, setSelectedPaymentType] = useState("COD");
+  const [selectedPaymentType, setSelectedPaymentType] = useState("ONLINE");
 
   // Store selected delivery method.
   const [selectedDelivery, setSelectedDelivery] = useState(null);
@@ -560,9 +596,10 @@ export default function Checkout() {
         setSelectedDelivery(data.deliveries?.[0] ?? null);
 
         // Select the first available payment method by default.
-        setSelectedPaymentType(
-          paymentOptions(data["payment-methods"])[0]?.value ?? "",
-        );
+        // setSelectedPaymentType(
+        //   paymentOptions(data["payment-methods"])[1]?.value ?? "",
+        // );
+        setSelectedPaymentType("ONLINE");
       } catch (error) {
         // Do not show an error for an intentionally cancelled request.
         if (!controller.signal.aborted) {
@@ -598,22 +635,32 @@ export default function Checkout() {
 
   // Calculate checkout total using current cart and shipping.
   const total =
-    shipping == null
-      ? null
-      : calculateCheckoutTotal(cart, shipping);
+    shipping == null ? null : calculateCheckoutTotal(cart, shipping);
 
   // Manual checks and polling share one lock and ignore stale responses.
   const checkOnlinePayment = useCallback(async () => {
     const session = paymentSession.current;
-    if (!session?.active || session.terminal || session.checking || !onlineOrderId) return false;
+    if (
+      !session?.active ||
+      session.terminal ||
+      session.checking ||
+      !onlineOrderId
+    )
+      return false;
     session.checking = true;
     setCheckingPayment(true);
     try {
       const response = await checkoutService.checkPayment(onlineOrderId);
-      if (!session.active || session !== paymentSession.current || session.terminal) return false;
+      if (
+        !session.active ||
+        session !== paymentSession.current ||
+        session.terminal
+      )
+        return false;
       const status = response.data?.payment_status?.toUpperCase();
       const messages = {
-        FAILED: "Payment failed. Your order was created but payment was not completed.",
+        FAILED:
+          "Payment failed. Your order was created but payment was not completed.",
         CANCELLED: "Payment was cancelled.",
         EXPIRED: "Payment QR has expired.",
       };
@@ -627,7 +674,10 @@ export default function Checkout() {
       if (status === "PAID") {
         setIsPaymentSuccessOpen(true);
       } else {
-        toast.error(messages[status], { id: "payment-" + onlineOrderId, duration: 5000 });
+        toast.error(messages[status], {
+          id: "payment-" + onlineOrderId,
+          duration: 5000,
+        });
       }
       return status === "PAID";
     } catch (error) {
@@ -643,7 +693,12 @@ export default function Checkout() {
   // Own the polling session so closing/navigating cannot process a late response.
   useEffect(() => {
     if (!isPaymentQrOpen || !onlineOrderId) return;
-    const session = { active: true, terminal: false, checking: false, interval: null };
+    const session = {
+      active: true,
+      terminal: false,
+      checking: false,
+      interval: null,
+    };
     paymentSession.current = session;
     session.interval = window.setInterval(checkOnlinePayment, 4000);
     queueMicrotask(checkOnlinePayment);
@@ -680,9 +735,7 @@ export default function Checkout() {
     }
 
     // Read customer information from checkout form.
-    const fields = Object.fromEntries(
-      new FormData(event.currentTarget),
-    );
+    const fields = Object.fromEntries(new FormData(event.currentTarget));
 
     // Copy cart items before removing them later.
     const ordered = cart.map((item) => ({ ...item }));
@@ -700,8 +753,7 @@ export default function Checkout() {
 
         // Load product only once when multiple cart items use it.
         if (!products.has(item.productId)) {
-          const response =
-            await productService.getById(item.productId);
+          const response = await productService.getById(item.productId);
 
           products.set(item.productId, response.data);
         }
@@ -710,24 +762,20 @@ export default function Checkout() {
         const variant = products
           .get(item.productId)
           ?.variants?.find(
-            (variant) =>
-              String(variant.id) === String(item.variantId),
+            (variant) => String(variant.id) === String(item.variantId),
           );
 
         // Find stock record for the selected size.
         const stock = variant?.stock?.find(
-          (entry) =>
-            String(entry.size_id) === String(item.sizeId),
+          (entry) => String(entry.size_id) === String(item.sizeId),
         );
 
         // Keep backward compatibility with old size response.
         const size = variant?.sizes?.find(
-          (entry) =>
-            String(entry.size_id) === String(item.sizeId),
+          (entry) => String(entry.size_id) === String(item.sizeId),
         );
 
-        item.variantStockId =
-          stock?.id ?? size?.variant_stock_id;
+        item.variantStockId = stock?.id ?? size?.variant_stock_id;
       }
 
       // Build the backend checkout request.
@@ -740,8 +788,7 @@ export default function Checkout() {
       );
 
       // Create order and payment in backend.
-      const response =
-        await checkoutService.submit(payload);
+      const response = await checkoutService.submit(payload);
 
       const order = response.data;
       const payment = order.payments?.[0];
@@ -820,19 +867,13 @@ export default function Checkout() {
         <div className="relative mx-auto max-w-[1280px]">
           {/* Checkout breadcrumb. */}
           <div className="flex items-center gap-2 text-xs font-semibold text-[#64748B]">
-            <Link
-              to="/"
-              className="transition hover:text-[#E96400]"
-            >
+            <Link to="/" className="transition hover:text-[#E96400]">
               Home
             </Link>
 
             <span>/</span>
 
-            <Link
-              to="/cart"
-              className="transition hover:text-[#E96400]"
-            >
+            <Link to="/cart" className="transition hover:text-[#E96400]">
               Cart
             </Link>
 
@@ -860,14 +901,10 @@ export default function Checkout() {
           role="alert"
           className="mx-auto max-w-[1280px] px-6 pt-6 text-red-500"
         >
-          {optionsError}{" "}
-
-          {/* Reload checkout options after an error. */}
+          {optionsError} {/* Reload checkout options after an error. */}
           <button
             type="button"
-            onClick={() =>
-              setAttempt((value) => value + 1)
-            }
+            onClick={() => setAttempt((value) => value + 1)}
             className="underline"
           >
             Try again
@@ -900,27 +937,22 @@ export default function Checkout() {
         >
           {/* Show loading before checkout settings arrive. */}
           {!options && !optionsError && (
-            <p role="status">
-              Loading checkout options...
-            </p>
+            <p role="status">Loading checkout options...</p>
           )}
 
           {/* Show checkout/payment error. */}
           {error && (
-            <p
-              role="alert"
-              className="text-sm text-red-500"
-            >
+            <p role="alert" className="text-sm text-red-500">
               {error}
             </p>
           )}
 
           {/* Select COD or ONLINE payment. */}
-          <PaymentType
+          {/* <PaymentType
             paymentTypes={payments}
             selectedType={selectedPaymentType}
             onSelectType={setSelectedPaymentType}
-          />
+          /> */}
 
           {/* Enter customer shipping information. */}
           <ShippingInformation />

@@ -6,7 +6,7 @@ export function tokenExpiry(token) {
 }
 export function clearSession() {
   for (const storage of [localStorage, sessionStorage]) {
-    storage.removeItem("token"); storage.removeItem("auth-user");
+    storage.removeItem("token"); storage.removeItem("auth-user"); storage.removeItem("refresh_token");
   }
 }
 export function readSession() {
@@ -16,15 +16,16 @@ export function readSession() {
     if (!token || (tokenExpiry(token) != null && tokenExpiry(token) <= Date.now())) return null;
     let user = null;
     try { user = JSON.parse(storage.getItem("auth-user")); } catch { /* Token can still be used. */ }
-    return { token, user };
+    return { token, user, refreshToken: storage.getItem("refresh_token") };
   } catch { return null; }
 }
-export function saveSession(token, user, remember) {
+export function saveSession(token, user, remember, refreshToken = null) {
   clearSession();
   const storage = remember ? localStorage : sessionStorage;
   storage.setItem("auth-user", JSON.stringify(user));
   storage.setItem("token", token);
-  return { token, user };
+  if (refreshToken) storage.setItem("refresh_token", refreshToken);
+  return { token, user, refreshToken: storage.getItem("refresh_token") };
 }
 export function safeReturnPath(path) {
   return typeof path === "string" && path.startsWith("/") && !path.startsWith("//")

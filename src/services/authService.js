@@ -1,9 +1,10 @@
+import { extractLoginSession } from "./loginResponse.js";
 import axios from "axios";
 
-const apiBase = new URL(import.meta.env.VITE_API_BASE_URL || "/", window.location.origin);
+const apiBase = new URL(import.meta.env?.VITE_API_BASE_URL || "/", window.location.origin);
 const client = axios.create({
   timeout: 15000,
-  baseURL: import.meta.env.VITE_AUTH_API_BASE_URL || `${apiBase.origin}/api/v1/auth`,
+  baseURL: import.meta.env?.VITE_AUTH_API_BASE_URL || `${apiBase.origin}/api/v1/auth`,
   headers: { Accept: "application/json", "Content-Type": "application/json" },
 });
 async function post(path, payload) {
@@ -12,7 +13,7 @@ async function post(path, payload) {
   return data;
 }
 export default {
-  login: (credentials) => post("/login", credentials),
+  login: async (credentials) => extractLoginSession(await post("/login", credentials)),
   register: (details) => post("/register", details),
   getCurrentUser: async (token, signal) => {
     const { data } = await client.get("/me", { signal, headers: { Authorization: `Bearer ${token}` } });

@@ -39,8 +39,8 @@ function parseExpiresAt(value) {
 
 // Format seconds as MM:SS.
 function formatCountdown(seconds) {
-  const minutes = Math.floor(seconds / 120);
-  const remainingSeconds = seconds % 120;
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
 
   return `${String(minutes).padStart(2, "0")}:${String(
     remainingSeconds,
@@ -95,7 +95,7 @@ export default function PaymentQrModal({
       onClose={onClose}
       showHeaderBorder={false}
       title="ABA Pay KHQR"
-      size="lg"
+      size="md"
     >
       <div className="grid gap-6 lg:grid-cols-1">
         {/* QR payment section */}

@@ -1,3 +1,5 @@
+import ButtonLoading from "./ButtonLoading";
+
 export default function Button({
   children,
   type = "button",
@@ -21,6 +23,7 @@ export default function Button({
       type={type}
       onClick={onClick}
       disabled={disabled || loading}
+      aria-busy={loading}
       className={`
         inline-flex items-center cursor-pointer justify-center rounded-lg px-4 py-2 text-sm font-semibold
         transition
@@ -29,7 +32,7 @@ export default function Button({
         ${className}
       `}
     >
-      {loading ? "Loading..." : children}
+      {loading ? <ButtonLoading>{children}</ButtonLoading> : children}
     </button>
   );
 }

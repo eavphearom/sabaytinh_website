@@ -1,129 +1,97 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import accountService from "../../services/accountService";
 import OrderCard from "./components/OrderCard";
 import OrderDetailsModal from "./components/OrderDetailsModal";
-import productImage from "../../assets/product/image.png";
-import productImageAlt from "../../assets/product/images.png";
 
-const tabs = [
-  { label: "All Orders", getCount: (items) => items.length },
-  {
-    label: "Pending",
-    getCount: (items) =>
-      items.filter((order) => matchesTab(order, "Pending")).length,
-  },
-  {
-    label: "In Progress",
-    getCount: (items) =>
-      items.filter((order) => matchesTab(order, "In Progress")).length,
-  },
-  {
-    label: "Delivered",
-    getCount: (items) =>
-      items.filter((order) => matchesTab(order, "Delivered")).length,
-  },
-  {
-    label: "Cancelled",
-    getCount: (items) =>
-      items.filter((order) => matchesTab(order, "Cancelled")).length,
-  },
-];
+const money = (value) => value == null ? "—" : new Intl.NumberFormat("en-US", {
+  style: "currency", currency: "USD",
+}).format(value);
+const statusLabel = (value) => (value || "Unknown").toLowerCase().split("_")
+  .map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
 
-const orders = [
-  {
-    code: "#GS-1024",
-    date: "Sep 14, 2026 at 10:24 AM",
-    items: 3,
-    total: "$190.00",
-    payment: "Paid",
-    status: "Processing",
+function mapOrder(order) {
+  const preview = order.preview_item;
+  const apiOrigin = new URL(import.meta.env.VITE_API_BASE_URL || "/", window.location.origin).origin;
+  const imageBase = import.meta.env.VITE_IMAGE_BASE_URL || `${apiOrigin}/`;
+  return {
+    id: order.id,
+    code: order.order_code,
+    date: new Date(order.created_at).toLocaleString("en-US", {
+      month: "short", day: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
+    }),
+    items: order.total_items ?? 0,
+    total: money(order.total),
+    payment: order.payment_status === "COD" ? "COD" : statusLabel(order.payment_status),
+    status: statusLabel(order.order_status),
     product: {
-      name: "Nike Air Force 1 '07",
-      color: "White / Black",
-      size: "9 (US)",
-      qty: 1,
-      price: "$110.00",
-      image: productImage,
+      name: preview?.product_name || "Product unavailable",
+      color: preview?.color ?? "—",
+      size: preview?.size ?? "—",
+      qty: preview?.qty ?? "—",
+      price: money(preview?.price),
+      image: preview?.image ? new URL(preview.image, `${imageBase.replace(/\/$/, "")}/`).href : undefined,
     },
-  },
-  {
-    code: "#GS-1023",
-    date: "Sep 09, 2026 at 02:16 PM",
-    items: 1,
-    total: "$86.00",
-    payment: "Paid",
-    status: "Shipped",
-    product: {
-      name: "Adidas Ultraboost 1.0",
-      color: "Core Black",
-      size: "9 (US)",
-      qty: 1,
-      price: "$86.00",
-      image: productImageAlt,
-    },
-  },
-  {
-    code: "#GS-1019",
-    date: "Aug 28, 2026 at 09:42 AM",
-    items: 2,
-    total: "$120.00",
-    payment: "Paid",
-    status: "Delivered",
-    product: {
-      name: "New Balance 530",
-      color: "Grey / Silver",
-      size: "8 (US)",
-      qty: 1,
-      price: "$100.00",
-      image: productImage,
-    },
-  },
-  {
-    code: "#GS-1016",
-    date: "Aug 18, 2026 at 11:08 AM",
-    items: 1,
-    total: "$54.00",
-    payment: "Pending payment",
-    status: "Pending",
-    product: {
-      name: "Campus First Mesh Running Sports",
-      color: "Navy / White",
-      size: "8 (US)",
-      qty: 1,
-      price: "$54.00",
-      image: productImageAlt,
-    },
-  },
-  {
-    code: "#GS-1012",
-    date: "Aug 03, 2026 at 04:30 PM",
-    items: 4,
-    total: "$240.00",
-    payment: "Refunded",
-    status: "Cancelled",
-    product: {
-      name: "Air Motion Runner",
-      color: "Purple / White",
-      size: "10 (US)",
-      qty: 1,
-      price: "$60.00",
-      image: productImage,
-    },
-  },
-];
-
-function matchesTab(order, activeTab) {
-  if (activeTab === "All Orders") return true;
-  if (activeTab === "In Progress") {
-    return ["Pending", "Processing", "Shipped"].includes(order.status);
-  }
-
-  return order.status === activeTab;
+  };
 }
 
 export default function Orders() {
-  const [activeTab, setActiveTab] = useState("All Orders");
+  const [status, setStatus] = useState("");
+  const [filters, setFilters] = useState({ options: [], loading: true, error: "" });
+  const [filterAttempt, setFilterAttempt] = useState(0);
   const [selectedOrder, setSelectedOrder] = useState(null);
-  const filteredOrders = orders.filter((order) => matchesTab(order, activeTab));
+  const [searchParams] = useSearchParams();
+  const linkedOrder = searchParams.get("order");
+  const [page, setPage] = useState(1);
+  const [attempt, setAttempt] = useState(0);
+  const [result, setResult] = useState({ orders: [], pagination: null, loading: true, error: "" });
+  const { orders, pagination, loading, error } = result;
+
+  useEffect(() => {
+    const controller = new AbortController();
+    async function loadFilters() {
+      setFilters({ options: [], loading: true, error: "" });
+      try {
+        const options = await accountService.getOrderFilters(controller.signal);
+        if (!controller.signal.aborted) setFilters({ options, loading: false, error: "" });
+      } catch (err) {
+        if (!controller.signal.aborted) {
+          setFilters({ options: [], loading: false,
+            error: err.response?.data?.message || err.message || "Unable to load order filters." });
+        }
+      }
+    }
+    loadFilters();
+    return () => controller.abort();
+  }, [filterAttempt]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    async function loadOrders() {
+      setResult({ orders: [], pagination: null, loading: true, error: "" });
+      try {
+        const response = await accountService.getOrders(controller.signal, {
+          pageNo: page, perPage: 10, ...(status ? { status } : {}),
+        });
+        if (controller.signal.aborted) return;
+        if (page > 1 && Number(response.pagination?.page_no) !== page) {
+          throw new Error("This page could not be loaded. Please try again.");
+        }
+        const mappedOrders = response.data.map(mapOrder);
+        setResult({ orders: mappedOrders, pagination: response.pagination, loading: false, error: "" });
+        if (linkedOrder) setSelectedOrder(mappedOrders.find((order) => order.code === linkedOrder) ?? null);
+      } catch (err) {
+        if (!controller.signal.aborted) {
+          setResult({ orders: [], pagination: null, loading: false,
+            error: err.response?.data?.message || err.message || "Unable to load orders." });
+        }
+      }
+    }
+    loadOrders();
+    return () => controller.abort();
+  }, [page, attempt, linkedOrder, status]);
+
+  const tabs = [{ label: "All Orders", value: "" }, ...filters.options];
 
   return (
     <div className="grid gap-5">
@@ -142,34 +110,57 @@ export default function Orders() {
       <section className="rounded-2xl border border-[#E6EAF0] bg-white/70 p-4 shadow-[0_14px_36px_rgba(15,23,42,0.04)] sm:p-5">
         <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {tabs.map((tab) => {
-            const isActive = activeTab === tab.label;
-            const count = tab.getCount(orders);
+            const isActive = status === tab.value;
 
             return (
               <button
-                key={tab.label}
+                key={tab.value}
                 type="button"
-                onClick={() => setActiveTab(tab.label)}
+                aria-pressed={isActive}
+                onClick={() => {
+                  setStatus(tab.value);
+                  setPage(1);
+                }}
                 className={`h-10 shrink-0 cursor-pointer rounded-full px-4 text-sm font-medium transition ${
                   isActive
                     ? "bg-[#E96400] text-white shadow-[0_10px_20px_rgba(233,100,0,0.22)]"
                     : "bg-white text-[#64748B] ring-1 ring-[#E6EAF0] hover:bg-[#FFF3E8] hover:text-[#E96400]"
                 }`}
               >
-                {tab.label} ({count})
+                {tab.label}
               </button>
             );
           })}
         </div>
-        <div className="mt-5 grid gap-4">
-          {filteredOrders.map((order) => (
+        {filters.loading && <p role="status" className="mt-3 text-xs text-[#64748B]">Loading order filters...</p>}
+        {filters.error && <div role="alert" className="mt-3 text-sm text-red-600">
+          <p>{filters.error}</p>
+          <button type="button" onClick={() => setFilterAttempt((value) => value + 1)} className="mt-2 underline">Retry filters</button>
+        </div>}
+        <div aria-busy={loading} className="mt-5 grid gap-4">
+          {loading && <p role="status" className="text-sm text-[#64748B]">Loading orders...</p>}
+          {error && <div role="alert" className="text-sm text-red-600">
+            <p>{error}</p>
+            <button type="button" onClick={() => setAttempt((value) => value + 1)} className="mt-2 underline">Try again</button>
+          </div>}
+          {!loading && !error && orders.length === 0 && (
+            <p className="text-sm text-[#64748B]">{status ? "No orders with this status." : "No orders yet."}</p>
+          )}
+          {orders.map((order) => (
             <OrderCard
               key={order.code}
               order={order}
               onViewDetails={setSelectedOrder}
             />
           ))}
-        </div>{" "}
+        </div>
+        {!loading && (pagination || page > 1) && (
+          <nav aria-label="Order pages" className="mt-5 flex items-center justify-between gap-3 text-sm">
+            <button type="button" disabled={page <= 1} onClick={() => setPage((value) => value - 1)} className="rounded-xl border px-4 py-2 disabled:opacity-40">Previous</button>
+            <span className="text-[#64748B]">Page {pagination?.page_no ?? page}{pagination ? ` of ${Math.max(1, Number(pagination.total_page))} · ${pagination.total} orders` : ""}</span>
+            <button type="button" disabled={!pagination || page >= Number(pagination.total_page)} onClick={() => setPage((value) => value + 1)} className="rounded-xl border px-4 py-2 disabled:opacity-40">Next</button>
+          </nav>
+        )}
       </section>
 
       <OrderDetailsModal

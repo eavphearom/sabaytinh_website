@@ -34,8 +34,8 @@ export default function Profile() {
       </div>
 
       <form className="mt-7 grid gap-4 md:grid-cols-2">
-        <Input name="firstName" label="First Name" defaultValue="Bun" className={inputClass} />
-        <Input name="lastName" label="Last Name" defaultValue="Heng" className={inputClass} />
+        {/* <Input name="firstName" label="First Name" defaultValue="Bun" className={inputClass} />
+        <Input name="lastName" label="Last Name" defaultValue="Heng" className={inputClass} /> */}
         <Input name="username" label="Username" defaultValue="bunheng" className={inputClass} />
         <Input name="email" type="email" label="Email" defaultValue="bunheng@example.com" disabled className={`${inputClass} disabled:bg-[#EEF2F6] disabled:text-[#94A3B8]`} />
         <Input name="phone" label="Phone" defaultValue="096 5231 272" className={inputClass} />

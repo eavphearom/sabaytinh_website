@@ -6,6 +6,8 @@ const statusStyles = {
   Processing: "bg-[#FFF4E8] text-[#C65A00]",
   Shipped: "bg-[#FFF4E8] text-[#C65A00]",
   Delivered: "bg-[#E8F8F0] text-[#108657]",
+  Completed: "bg-[#E8F8F0] text-[#108657]",
+  "In Progress": "bg-[#FFF4E8] text-[#C65A00]",
   Cancelled: "bg-[#FFECEF] text-[#D82745]",
 };
 
@@ -14,6 +16,7 @@ const paymentStyles = {
   Unpaid: "bg-[#FFF4E8] text-[#C65A00]",
   "Pending payment": "bg-[#FFF4E8] text-[#C65A00]",
   Refunded: "bg-[#FCE7F3] text-[#BE185D]",
+  Cancelled: "bg-[#FFECEF] text-[#D82745]",
 };
 
 function Badge({ children, className }) {
@@ -94,7 +97,7 @@ export default function OrderDetailsModal({ order, isOpen, onClose }) {
 
             <div className="grid gap-4 sm:grid-cols-[112px_minmax(0,1fr)] sm:items-center">
               <div className="flex h-24 w-full items-center justify-center overflow-hidden rounded-xl bg-[#F5F7FA] sm:h-24 sm:w-28">
-                <img src={order.product.image} alt={order.product.name} className="h-full w-full object-contain p-3" />
+                {order.product.image ? <img src={order.product.image} alt={order.product.name} className="h-full w-full object-contain p-3" /> : <span className="text-xs text-[#64748B]">No image</span>}
               </div>
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">

@@ -1,23 +1,66 @@
-import { Link } from "react-router-dom";
-import { CheckCircle2, Clock3, PackageCheck, ShoppingBag } from "lucide-react";
+import { useEffect, useState } from "react";
+import { CheckCircle2, Clock3, ShoppingBag } from "lucide-react";
+import accountService from "../../services/accountService";
 import AccountStatCard from "./components/AccountStatCard";
 import RecentOrders from "./components/RecentOrders";
 
-const recentOrders = [
-  { code: "#GS-1024", date: "Sep 14, 2026", total: "$190.00", status: "Processing" },
-  { code: "#GS-1023", date: "Sep 09, 2026", total: "$86.00", status: "Shipped" },
-  { code: "#GS-1019", date: "Aug 28, 2026", total: "$120.00", status: "Delivered" },
-  { code: "#GS-1016", date: "Aug 18, 2026", total: "$54.00", status: "Pending" },
-];
-
-const profileInfo = [
-  { label: "Full Name", value: "Bunheng" },
-  { label: "Email Address", value: "bunheng@example.com" },
-  { label: "Phone Number", value: "096 5231 272" },
-  { label: "Member Since", value: "January 2026" },
-];
+const formatOrder = (order) => ({
+  code: order.order_code,
+  date: new Date(order.created_at).toLocaleDateString("en-US", {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+  }),
+  total: new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(order.total),
+  status: (order.order_status || "Unknown").toLowerCase()
+    .split("_").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" "),
+});
 
 export default function AccountOverview() {
+  const [overview, setOverview] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [recentOrders, setRecentOrders] = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(true);
+  const [ordersError, setOrdersError] = useState("");
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    accountService.getOverview(controller.signal)
+      .then((data) => {
+        if (!controller.signal.aborted) setOverview(data);
+      })
+      .catch((err) => {
+        if (!controller.signal.aborted) {
+          setError(err.response?.data?.message || err.message || "Unable to load account overview.");
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+
+    accountService.getOrders(controller.signal)
+      .then((response) => {
+        if (!controller.signal.aborted) {
+          setRecentOrders(response.data.map(formatOrder));
+        }
+      })
+      .catch((err) => {
+        if (!controller.signal.aborted) {
+          setOrdersError(err.response?.data?.message || err.message || "Unable to load recent orders.");
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setOrdersLoading(false);
+      });
+
+    return () => controller.abort();
+  }, []);
+
   return (
     <div className="grid gap-5">
       <header className="rounded-2xl border border-[#E6EAF0] bg-white p-5 shadow-[0_14px_36px_rgba(15,23,42,0.04)] sm:p-6">
@@ -28,13 +71,16 @@ export default function AccountOverview() {
         </p>
       </header>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <AccountStatCard icon={ShoppingBag} value="12" label="Total Orders" />
-        <AccountStatCard icon={Clock3} value="3" label="In Progress" tone="blue" />
-        <AccountStatCard icon={CheckCircle2} value="9" label="Completed" tone="green" />
+      {loading && <p role="status" className="text-sm text-[#64748B]">Loading account overview...</p>}
+      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+
+      <div aria-busy={loading} className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <AccountStatCard icon={ShoppingBag} value={overview?.total_orders ?? "—"} label="Total Orders" />
+        <AccountStatCard icon={Clock3} value={overview?.in_progress ?? "—"} label="In Progress" tone="blue" />
+        <AccountStatCard icon={CheckCircle2} value={overview?.completed ?? "—"} label="Completed" tone="green" />
       </div>
 
-      <section className="rounded-2xl border border-[#E6EAF0] bg-white p-5 shadow-[0_14px_36px_rgba(15,23,42,0.04)] sm:p-6">
+      {/* <section className="rounded-2xl border border-[#E6EAF0] bg-white p-5 shadow-[0_14px_36px_rgba(15,23,42,0.04)] sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#FFF3E8] text-[#E96400]">
@@ -59,9 +105,9 @@ export default function AccountOverview() {
             </div>
           ))}
         </div>
-      </section>
+      </section> */}
 
-      <RecentOrders orders={recentOrders} />
+      <RecentOrders orders={recentOrders} loading={ordersLoading} error={ordersError} />
     </div>
   );
 }
