@@ -213,6 +213,7 @@ function DeliveryMethod({ deliveryMethods, selectedMethod, onSelectMethod }) {
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {deliveryMethods.map((method) => {
           const isSelected = selectedMethod?.id === method.id;
+          const deliveryImage = method.image || deliveryLogos[method.name];
 
           return (
             <button
@@ -232,9 +233,9 @@ function DeliveryMethod({ deliveryMethods, selectedMethod, onSelectMethod }) {
               aria-pressed={isSelected}
             >
               <span className="flex h-11 items-center justify-center rounded-lg">
-                {deliveryLogos[method.name] && (
+                {deliveryImage && (
                   <img
-                    src={deliveryLogos[method.name]}
+                    src={deliveryImage}
                     alt={method.name}
                     className="max-h-8 max-w-full rounded-2xl object-contain"
                   />

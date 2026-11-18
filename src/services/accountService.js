@@ -29,5 +29,16 @@ const getOrderFilters = async (signal) => {
 
   return data.data.order_status;
 };
+const cancelOrder = async (orderId) => {
+  const { data } = await apiClient.patch(
+    `/account/orders/${orderId}/cancel`
+  );
 
-export default { getOverview, getOrders, getOrderFilters };
+  if (data.error) {
+    throw new Error(data.message || "Unable to cancel order.");
+  }
+
+  return data;
+};
+
+export default { getOverview, getOrders, getOrderFilters,cancelOrder };

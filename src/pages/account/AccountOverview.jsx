@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { CheckCircle2, Clock3, ShoppingBag } from "lucide-react";
 import accountService from "../../services/accountService";
+import useAuth from "../../hooks/useAuth";
 import AccountStatCard from "./components/AccountStatCard";
 import RecentOrders from "./components/RecentOrders";
 
@@ -20,6 +21,8 @@ const formatOrder = (order) => ({
 });
 
 export default function AccountOverview() {
+  const { user } = useAuth();
+  const displayName = user?.username || user?.name;
   const [overview, setOverview] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -67,7 +70,7 @@ export default function AccountOverview() {
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#E96400]">Account Overview</p>
         <h1 className="mt-3 font-michroma text-2xl font-semibold text-[#07182E] sm:text-3xl">My Account</h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-[#64748B]">
-          Welcome back, Bunheng. Manage your profile and follow your latest Go Shoes orders in one clean place.
+          Welcome back{displayName ? `, ${displayName}` : ""}. Manage your profile and follow your latest Go Shoes orders in one clean place.
         </p>
       </header>
 
@@ -75,8 +78,8 @@ export default function AccountOverview() {
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
 
       <div aria-busy={loading} className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <AccountStatCard icon={ShoppingBag} value={overview?.total_orders ?? "—"} label="Total Orders" />
-        <AccountStatCard icon={Clock3} value={overview?.in_progress ?? "—"} label="In Progress" tone="blue" />
+        <AccountStatCard icon={ShoppingBag} value={overview?.totalOrders ?? "—"} label="Total Orders" />
+        <AccountStatCard icon={Clock3} value={overview?.inProgress ?? "—"} label="In Progress" tone="blue" />
         <AccountStatCard icon={CheckCircle2} value={overview?.completed ?? "—"} label="Completed" tone="green" />
       </div>
 

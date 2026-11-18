@@ -7,6 +7,7 @@ import {
   ShoppingCart,
 } from "lucide-react";
 import { useState } from "react";
+import toast from "react-hot-toast";
 import { Link, useParams } from "react-router-dom";
 import useShopping from "../../hooks/useShopping";
 import FavoriteButton from "../../components/product/FavoriteButton";
@@ -242,8 +243,10 @@ function VariantDetails({ product, variant, variants, onVariantChange }) {
               try {
                 addToCart(product, variant, selectedSize, quantity);
                 setCartMessage("Added to cart.");
+                toast.success("Added to cart.");
               } catch (error) {
                 setCartMessage(error.message);
+                toast.error(error.message);
               }
             }}
             className="flex h-11 items-center justify-center gap-2 rounded-md bg-[#E96400] text-sm font-extrabold text-white transition hover:bg-[#C95500] disabled:cursor-not-allowed disabled:opacity-40"

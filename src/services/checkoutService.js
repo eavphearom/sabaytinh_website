@@ -14,9 +14,16 @@ export default {
     return data;
   },
 
-  async checkPayment(orderId) {
+  async resumePayment(orderId, signal) {
+    const { data } = await apiClient.post(`/orders/${orderId}/payment/resume`, {}, { signal });
+    if (data.error || !data.data?.payment)
+      throw new Error(data.message || "Unable to resume payment.");
+    return data.data;
+  },
+
+  async checkPayment(orderId, signal) {
     const { data } = await apiClient.post(
-      `/orders/${orderId}/payment/check`,
+      `/orders/${orderId}/payment/check`, {}, { signal },
     );
 
     if (data.error) {
