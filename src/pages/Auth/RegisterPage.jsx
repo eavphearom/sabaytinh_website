@@ -1,3 +1,4 @@
+import { startGoogleLogin } from "../../services/googleLogin";
 import authService from "../../services/authService";
 import { safeReturnPath } from "../../services/authSession";
 import { ArrowLeft, Eye, EyeOff, LockKeyhole, Mail, User } from "lucide-react";
@@ -65,6 +66,12 @@ export default function RegisterPage() {
   const location = useLocation();
   const [error, setError] = useState("");
   const returnTo = safeReturnPath(location.state?.from);
+  const handleGoogle = async () => {
+    if (loading) return;
+    setLoading(true); setError("");
+    try { await startGoogleLogin(authService.startGoogle, returnTo); }
+    catch (error) { setError(error.response?.data?.message || error.message || "Unable to start Google login."); setLoading(false); }
+  };
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (loading) return;
@@ -138,6 +145,8 @@ export default function RegisterPage() {
             </div>
 
             <button
+              onClick={handleGoogle}
+              disabled={loading}
               type="button"
               className="flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-[#E5EAF0] bg-white text-sm font-semibold text-[#07182E] transition hover:border-[#F8C9A5] hover:bg-[#FFF8F2]"
             >

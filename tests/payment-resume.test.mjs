@@ -12,7 +12,7 @@ test("duplicate starts and polling never overlap; paid stops once", async () => 
     resume: async () => { resumes++; return ready; },
     check: () => { checks++; return pending.promise; },
     onReady() {}, onMessage() {}, onPaid() { paid++; },
-    schedule(fn, ms) { assert.equal(ms, 4000); tick = fn; return 7; },
+    schedule(fn, ms) { assert.equal(ms, 2000); tick = fn; return 7; },
     unschedule(id) { assert.equal(id, 7); stopped++; },
   });
   const start = session.start(9);

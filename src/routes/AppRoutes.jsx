@@ -1,3 +1,4 @@
+import GoogleCallbackPage from "../pages/Auth/GoogleCallbackPage";
 import RequireAuth from "../components/common/RequireAuth";
 import { Route, Routes } from "react-router-dom";
 import LoginPage from "../pages/Auth/LoginPage";
@@ -38,6 +39,7 @@ export default function AppRoutes() {
         </Route>
       </Route>
 
+      <Route path="/auth/google/callback" element={<GoogleCallbackPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="*" element={<NotFoundPage />} />

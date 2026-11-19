@@ -14,6 +14,8 @@ async function post(path, payload) {
 }
 export default {
   login: async (credentials) => extractLoginSession(await post("/login", credentials)),
+  startGoogle: (payload) => post("/google/start", payload),
+  googleLogin: async (payload) => extractLoginSession(await post("/google/login", payload)),
   register: (details) => post("/register", details),
   getCurrentUser: async (token, signal) => {
     const { data } = await client.get("/me", { signal, headers: { Authorization: `Bearer ${token}` } });

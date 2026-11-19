@@ -1,5 +1,5 @@
+import { PAYMENT_POLL_MS, watchPaymentReturn } from "../../services/paymentPolling";
 import toast from "react-hot-toast";
-import { motion, useReducedMotion } from "framer-motion";
 import ButtonLoading from "../../components/ui/ButtonLoading";
 import checkoutService from "../../services/checkoutService";
 import productService from "../../services/productService";
@@ -420,56 +420,6 @@ function CheckoutSummary({
    ORDER SUCCESS MODAL
 ========================================================= */
 
-// Brief confirmation shown only after the backend reports PAID.
-function PaymentSuccessPopup() {
-  const reducedMotion = useReducedMotion();
-  return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/45 px-4 backdrop-blur-[2px]">
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="payment-success-title"
-        className="w-full max-w-sm rounded-3xl bg-white p-8 text-center shadow-[0_30px_100px_rgba(15,23,42,0.25)]"
-      >
-        <motion.div
-          initial={reducedMotion ? false : { opacity: 0, scale: 0.85 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.3, ease: "easeOut" }}
-          className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#ECFDF3]"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            className="h-12 w-12 text-[#12A467]"
-            fill="none"
-            aria-hidden="true"
-          >
-            <motion.path
-              d="M5 12l4 4L19 6"
-              stroke="currentColor"
-              strokeWidth="3"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              initial={reducedMotion ? false : { pathLength: 0 }}
-              animate={{ pathLength: 1 }}
-              transition={{
-                duration: reducedMotion ? 0 : 0.45,
-                delay: reducedMotion ? 0 : 0.15,
-              }}
-            />
-          </svg>
-        </motion.div>
-        <h2
-          id="payment-success-title"
-          role="status"
-          className="mt-5 text-xl font-semibold text-[#07182E]"
-        >
-          Payment Successful
-        </h2>
-      </div>
-    </div>
-  );
-}
-
 function OrderSuccessModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
@@ -555,7 +505,6 @@ export default function Checkout() {
 
   // Control order success modal.
   const [isOrderSuccessOpen, setIsOrderSuccessOpen] = useState(false);
-  const [isPaymentSuccessOpen, setIsPaymentSuccessOpen] = useState(false);
 
   // Prevent another checkout after order creation.
   const [completed, setCompleted] = useState(false);
@@ -670,10 +619,11 @@ export default function Checkout() {
       // Stop immediately for every terminal status, before closing the QR.
       session.terminal = true;
       session.active = false;
+      session.unwatch?.();
       window.clearInterval(session.interval);
       setIsPaymentQrOpen(false);
       if (status === "PAID") {
-        setIsPaymentSuccessOpen(true);
+        setIsOrderSuccessOpen(true);
       } else {
         toast.error(messages[status], {
           id: "payment-" + onlineOrderId,
@@ -701,24 +651,16 @@ export default function Checkout() {
       interval: null,
     };
     paymentSession.current = session;
-    session.interval = window.setInterval(checkOnlinePayment, 4000);
+    session.interval = window.setInterval(checkOnlinePayment, PAYMENT_POLL_MS);
+    session.unwatch = watchPaymentReturn(checkOnlinePayment);
     queueMicrotask(checkOnlinePayment);
     return () => {
       session.active = false;
+      session.unwatch?.();
       window.clearInterval(session.interval);
       if (paymentSession.current === session) paymentSession.current = null;
     };
   }, [isPaymentQrOpen, onlineOrderId, checkOnlinePayment]);
-
-  // Let the check animation finish, then hand off to the existing order modal.
-  useEffect(() => {
-    if (!isPaymentSuccessOpen) return;
-    const timer = window.setTimeout(() => {
-      setIsPaymentSuccessOpen(false);
-      setIsOrderSuccessOpen(true);
-    }, 1250);
-    return () => window.clearTimeout(timer);
-  }, [isPaymentSuccessOpen]);
 
   // Submit checkout and create the order.
   const handleSubmitOrder = async (event) => {
@@ -992,6 +934,7 @@ export default function Checkout() {
           // Stop immediately; ignore any response already in flight.
           if (paymentSession.current) {
             paymentSession.current.active = false;
+            paymentSession.current.unwatch?.();
             window.clearInterval(paymentSession.current.interval);
           }
           setIsPaymentQrOpen(false);
@@ -1006,7 +949,6 @@ export default function Checkout() {
       {/* =========================
           ORDER SUCCESS MODAL
          ========================= */}
-      {isPaymentSuccessOpen && <PaymentSuccessPopup />}
 
       <OrderSuccessModal
         isOpen={isOrderSuccessOpen}

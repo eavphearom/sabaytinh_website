@@ -71,6 +71,13 @@ export default function AuthProvider({ children }) {
     setSession(nextSession);
     return nextSession;
   };
+  const googleLogin = async (payload, remember = true) => {
+    const { token, refreshToken, user } = await authService.googleLogin(payload);
+    setVerified({ token: null, user: null, error: "" });
+    const nextSession = saveSession(token, user, remember, refreshToken);
+    setSession(nextSession);
+    return nextSession;
+  };
   const logout = async () => {
     try {
       if (token) await authService.logout(token);
@@ -89,6 +96,7 @@ export default function AuthProvider({ children }) {
         error: token ? verified.error : "",
         retry: () => setAttempt((value) => value + 1),
         login,
+        googleLogin,
         logout,
       }}
     >

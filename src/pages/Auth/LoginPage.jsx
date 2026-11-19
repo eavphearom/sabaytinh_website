@@ -1,3 +1,5 @@
+import authService from "../../services/authService";
+import { startGoogleLogin } from "../../services/googleLogin";
 import useAuth from "../../hooks/useAuth";
 import { safeReturnPath } from "../../services/authSession";
 import { ArrowLeft, Eye, EyeOff, LockKeyhole, Mail } from "lucide-react";
@@ -42,6 +44,16 @@ export default function LoginPage() {
   const location = useLocation();
   const [error, setError] = useState("");
   const returnTo = safeReturnPath(location.state?.from);
+  const handleGoogle = async () => {
+    if (loading) return;
+    setLoading(true); setError("");
+    try {
+      await startGoogleLogin(authService.startGoogle, returnTo, document.querySelector('input[name="remember"]')?.checked ?? true);
+    } catch (error) {
+      setError(error.response?.data?.message || error.message || "Unable to start Google login.");
+      setLoading(false);
+    }
+  };
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (loading) return;
@@ -114,6 +126,8 @@ export default function LoginPage() {
             </div>
 
             <button
+              onClick={handleGoogle}
+              disabled={loading}
               type="button"
               className="flex h-12 cursor-pointer w-full items-center justify-center gap-3 rounded-xl border border-[#E5EAF0] bg-white text-sm font-semibold text-[#07182E] transition hover:border-[#F8C9A5] hover:bg-[#FFF8F2]"
             >

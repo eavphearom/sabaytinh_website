@@ -1,3 +1,5 @@
+import { useState } from "react";
+import InvoiceModal from "./InvoiceModal";
 import { Download, Package, ReceiptText, Truck } from "lucide-react";
 import Modal from "../../../components/ui/Modal";
 
@@ -27,39 +29,10 @@ function Badge({ children, className }) {
   );
 }
 
-function downloadInvoice(order) {
-  const invoiceText = [
-    "GO SHOES INVOICE",
-    "----------------",
-    `Order Code: ${order.code}`,
-    `Order Date: ${order.date}`,
-    `Order Status: ${order.status}`,
-    `Payment Status: ${order.payment}`,
-    "",
-    "Product",
-    `Name: ${order.product.name}`,
-    `Color: ${order.product.color}`,
-    `Size: ${order.product.size}`,
-    `Qty: ${order.product.qty}`,
-    `Price: ${order.product.price}`,
-    order.items > 1 ? `Additional Items: ${order.items - 1}` : "Additional Items: 0",
-    "",
-    `Total Amount: ${order.total}`,
-  ].join("\n");
-
-  const blob = new Blob([invoiceText], { type: "text/plain;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `${order.code.replace("#", "")}-invoice.txt`;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
-}
-
 export default function OrderDetailsModal({ order, isOpen, onClose }) {
+  const [invoiceOrderId, setInvoiceOrderId] = useState(null);
   if (!order) return null;
+  if (isOpen && invoiceOrderId === order.id) return <InvoiceModal key={order.id} orderId={order.id} onClose={() => setInvoiceOrderId(null)} />;
 
   const moreItems = order.items - 1;
   const canDownloadInvoice = order.payment === "Paid" || order.payment === "Refunded";
@@ -79,12 +52,12 @@ export default function OrderDetailsModal({ order, isOpen, onClose }) {
 
           <button
             type="button"
-            onClick={() => downloadInvoice(order)}
+            onClick={() => setInvoiceOrderId(order.id)}
             disabled={!canDownloadInvoice}
             className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#E96400] px-4 text-sm font-semibold text-white transition hover:bg-[#C95500] disabled:cursor-not-allowed disabled:bg-[#E5EAF0] disabled:text-[#94A3B8]"
           >
             <Download size={16} />
-            Download Invoice
+            View Invoice
           </button>
         </div>
 

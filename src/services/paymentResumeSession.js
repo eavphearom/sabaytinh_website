@@ -1,3 +1,4 @@
+import { PAYMENT_POLL_MS, watchPaymentReturn } from "./paymentPolling.js";
 // One order per session. Requests and timer callbacks share the same in-flight guard.
 export function createPaymentResumeSession({
   resume, check, onReady, onPaid, onMessage,
@@ -8,10 +9,12 @@ export function createPaymentResumeSession({
   let started = false;
   let checking = false;
   let timer;
+  let unwatch;
 
   function stop() {
     active = false;
     if (timer !== undefined) unschedule(timer);
+    unwatch?.();
     controller.abort();
   }
 
@@ -58,7 +61,8 @@ export function createPaymentResumeSession({
       }
       onReady(payment);
       if (!active) return;
-      timer = schedule(() => poll(orderId), 4000);
+      timer = schedule(() => poll(orderId), PAYMENT_POLL_MS);
+      unwatch = watchPaymentReturn(() => poll(orderId));
       await poll(orderId);
     } catch (error) {
       if (active) {
